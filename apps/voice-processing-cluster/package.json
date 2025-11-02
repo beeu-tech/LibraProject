@@ -1,0 +1,26 @@
+{
+  "name": "@libra-bot/voice-processing-cluster",
+  "version": "1.0.0",
+  "description": "음성 처리 클러스터 (ASR/LLM/TTS)",
+  "main": "dist/server.js",
+  "scripts": {
+    "start": "node dist/server.js",
+    "build": "tsc",
+    "dev": "tsc -w"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "redis": "^4.6.10",
+    "uuid": "^9.0.1",
+    "dotenv": "^16.3.1",
+    "pino": "^8.17.2",
+    "pino-pretty": "^10.3.1",
+    "axios": "^1.6.2"
+  },
+  "devDependencies": {
+    "@types/uuid": "^9.0.7",
+    "typescript": "^5.3.3"
+  }
+}

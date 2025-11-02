@@ -1,0 +1,27 @@
+{
+  "name": "@libra-bot/auto-scaler",
+  "version": "1.0.0",
+  "description": "자동 스케일링 시스템",
+  "main": "dist/server.js",
+  "scripts": {
+    "start": "node dist/server.js",
+    "build": "tsc",
+    "dev": "tsc -w"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "redis": "^4.6.10",
+    "dockerode": "^4.0.2",
+    "dotenv": "^16.3.1",
+    "pino": "^8.17.2",
+    "pino-pretty": "^10.3.1",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/dockerode": "^3.3.25",
+    "@types/node-cron": "^3.0.11",
+    "typescript": "^5.3.3"
+  }
+}

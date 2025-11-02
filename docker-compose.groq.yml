@@ -1,0 +1,195 @@
+version: '3.8'
+
+services:
+  # Gateway (음성 봇) - Groq API 사용
+  gateway:
+    build:
+      context: .
+      dockerfile: apps/gateway/Dockerfile
+    container_name: libra-gateway
+    ports:
+      - "8001:8001"
+    environment:
+      - GATEWAY_PORT=8001
+      - DATABASE_URL=postgresql://libra_user:libra_password@postgres:5432/libra_bot?ssl=disable
+      - REDIS_URL=redis://redis:6379
+      
+      # Groq API 설정 (음성용 - Qwen 한국어 우수)
+      - LLM_PROVIDER=openai
+      - LLM_BASE_URL=https://api.groq.com/openai/v1
+      - LLM_MODEL=qwen/qwen3-32b
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      
+      # ASR 설정 (Groq Whisper)
+      - ASR_PROVIDER=external
+      - ASR_EXTERNAL_URL=https://api.groq.com/openai/v1/audio/transcriptions
+      
+      # TTS 설정 (ElevenLabs - 고품질)
+      - TTS_PROVIDER=elevenlabs
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
+      - CF_API_TOKEN=${CF_API_TOKEN}
+      - CF_ACCOUNT_ID=${CF_ACCOUNT_ID}
+      - CF_TTS_MODEL=@cf/myshell-ai/melotts
+      - CF_TTS_VOICE=female
+      
+      - WORKER_SHARED_SECRET=${WORKER_SHARED_SECRET:-default-secret-change-me}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+
+  # AI Worker (텍스트 챗) - Groq API 전용
+  ai-worker:
+    build:
+      context: .
+      dockerfile: apps/ai-worker/Dockerfile
+    container_name: libra-ai-worker
+    ports:
+      - "8000:8000"
+    environment:
+      - AI_WORKER_PORT=8000
+      - DATABASE_URL=postgresql://libra_user:libra_password@postgres:5432/libra_bot?ssl=disable
+      - REDIS_URL=redis://redis:6379
+      
+      # Groq API 설정 (텍스트용 - Qwen 한국어 우수)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=https://api.groq.com/openai/v1
+      - DEFAULT_MODEL=qwen/qwen3-32b
+      
+      # 설정
+      - DEFAULT_LANG=ko
+      - MAX_TOKENS=${MAX_TOKENS:-512}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-0.6}
+      - LLM_TIMEOUT_SEC=30
+      - WORKER_SHARED_SECRET=${WORKER_SHARED_SECRET}
+      - AUTH_MODE=${AUTH_MODE:-simple}
+      - ALLOW_DDL=1
+      - DB_SSL_REQUIRE=0
+      - LLM_CACHE_ENABLED=1
+      - LLM_CACHE_TTL=300
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+
+  # Bot (Discord)
+  bot:
+    build:
+      context: .
+      dockerfile: apps/bot/Dockerfile
+    container_name: libra-bot
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
+      - AI_WORKER_URL=http://ai-worker:8000
+      - GATEWAY_URL=http://gateway:8001
+      - REDIS_URL=redis://redis:6379
+      - WORKER_SHARED_SECRET=${WORKER_SHARED_SECRET:-default-secret-change-me}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      - redis
+      - gateway
+      - ai-worker
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+
+  # PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: libra-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_DB=libra_bot
+      - POSTGRES_USER=libra_user
+      - POSTGRES_PASSWORD=libra_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U libra_user -d libra_bot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 256M
+    command: >
+      postgres
+      -c shared_buffers=128MB
+      -c max_connections=50
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c effective_cache_size=256MB
+      -c random_page_cost=1.1
+      -c log_min_duration_statement=1000
+    restart: unless-stopped
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: libra-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.05'
+          memory: 64M
+    command: >
+      redis-server
+      --maxmemory 200mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --appendonly no
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

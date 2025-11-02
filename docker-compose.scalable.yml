@@ -1,0 +1,158 @@
+version: '3.8'
+
+services:
+  # Redis (Message Queue & Service Discovery)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Load Balancer
+  load-balancer:
+    build:
+      context: .
+      dockerfile: apps/load-balancer/Dockerfile
+    ports:
+      - "8000:8000"  # Load Balancer
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/load-balancer:/app
+    command: npm run dev
+
+  # WebSocket Gateway (Multiple Instances)
+  websocket-gateway-1:
+    build:
+      context: .
+      dockerfile: apps/websocket-gateway/Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_ID=websocket-gateway-1
+      - SERVICE_NAME=websocket-gateway
+      - LOG_LEVEL=info
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/websocket-gateway:/app
+    command: npm run dev
+
+  websocket-gateway-2:
+    build:
+      context: .
+      dockerfile: apps/websocket-gateway/Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_ID=websocket-gateway-2
+      - SERVICE_NAME=websocket-gateway
+      - LOG_LEVEL=info
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/websocket-gateway:/app
+    command: npm run dev
+
+  # Voice Processing Cluster (Multiple Instances)
+  voice-processing-cluster-1:
+    build:
+      context: .
+      dockerfile: apps/voice-processing-cluster/Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_ID=voice-processing-cluster-1
+      - SERVICE_NAME=voice-processing-cluster
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - CLOUDFLARE_API_KEY=${CLOUDFLARE_API_KEY}
+      - LOG_LEVEL=info
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/voice-processing-cluster:/app
+    command: npm run dev
+
+  voice-processing-cluster-2:
+    build:
+      context: .
+      dockerfile: apps/voice-processing-cluster/Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_ID=voice-processing-cluster-2
+      - SERVICE_NAME=voice-processing-cluster
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - CLOUDFLARE_API_KEY=${CLOUDFLARE_API_KEY}
+      - LOG_LEVEL=info
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/voice-processing-cluster:/app
+    command: npm run dev
+
+  voice-processing-cluster-3:
+    build:
+      context: .
+      dockerfile: apps/voice-processing-cluster/Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_ID=voice-processing-cluster-3
+      - SERVICE_NAME=voice-processing-cluster
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - CLOUDFLARE_API_KEY=${CLOUDFLARE_API_KEY}
+      - LOG_LEVEL=info
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/voice-processing-cluster:/app
+    command: npm run dev
+
+  # Monitoring System
+  monitoring:
+    build:
+      context: .
+      dockerfile: apps/monitoring/Dockerfile
+    ports:
+      - "3000:3000"  # Monitoring Dashboard
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/monitoring:/app
+    command: npm run dev
+
+  # Auto Scaler
+  auto-scaler:
+    build:
+      context: .
+      dockerfile: apps/auto-scaler/Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - LOG_LEVEL=info
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./apps/auto-scaler:/app
+    command: npm run dev
+
+volumes:
+  redis_data:

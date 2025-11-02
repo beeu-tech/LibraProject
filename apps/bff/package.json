@@ -1,0 +1,29 @@
+{
+  "name": "@libra-bot/bff",
+  "version": "1.0.0",
+  "description": "API Gateway (BFF)",
+  "main": "dist/libraBff.js",
+  "scripts": {
+    "dev": "tsx watch src/libraBff.ts",
+    "build": "tsc",
+    "start": "node dist/libraBff.js"
+  },
+  "dependencies": {
+    "fastify": "^4.24.3",
+    "@fastify/cors": "^8.4.0",
+    "@fastify/helmet": "^11.1.1",
+    "@fastify/rate-limit": "^9.1.0",
+    "ioredis": "^5.3.2",
+    "zod": "^3.22.4",
+    "dotenv": "^16.3.1",
+    "pino": "^8.17.2",
+    "pino-pretty": "^10.3.1",
+    "node-cache": "^5.1.2",
+    "prom-client": "^15.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "tsx": "^4.6.2",
+    "typescript": "^5.3.3"
+  }
+}

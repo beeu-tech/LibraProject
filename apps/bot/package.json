@@ -1,0 +1,30 @@
+{
+  "name": "@libra-bot/bot",
+  "version": "1.0.0",
+  "description": "Discord Bot Gateway",
+  "main": "dist/libraBot.js",
+  "scripts": {
+    "dev": "tsx watch src/libraBot.ts",
+    "build": "tsc",
+    "start": "node dist/libraBot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "@discordjs/voice": "^0.16.1",
+    "fastify": "^4.24.3",
+    "ioredis": "^5.3.2",
+    "zod": "^3.22.4",
+    "dotenv": "^16.3.1",
+    "pino": "^8.17.2",
+    "pino-pretty": "^10.3.1",
+    "prism-media": "^1.3.5",
+    "form-data": "^4.0.0",
+    "tweetnacl": "^1.0.3",
+    "opusscript": "^0.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "tsx": "^4.6.2",
+    "typescript": "^5.3.3"
+  }
+}
